@@ -9,10 +9,14 @@ terraform {
 }
 
 locals {
-  name       = "haedalwang"
-  region     = "ap-northeast-2"
-  account_id = data.aws_caller_identity.current.account_id
-  environment    = "dev"
+  ## VPC,subnet, 등에 사용
+  name = "haedalwang"
+  ## EKS Cluster 이름
+  cluster_name = "haedalwang"
+
+  region      = "ap-northeast-2"
+  account_id  = data.aws_caller_identity.current.account_id
+  environment = "dev"
 
   tags = {
     Terraform = "true"

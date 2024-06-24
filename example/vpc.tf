@@ -1,26 +1,27 @@
 module "vpc" {
-  source  = "../module/vpc"
+  source = "../module/vpc"
 
-  name = "test"
-  cidr= ""
+  ## VPC
+  name = "${local.name}-${local.environment}"
+  cidr = "10.150.0.0/16"
 
-  prefix     = local.env
-  suffix     = "sb-public"
-  vpc_id     = module.vpc.vpc_id
-  azs        = data.aws_availability_zones.azs.names
-  cidr       = ["10.131.1.0/24", "10.131.2.0/24", "10.131.3.0/24"]
-  type       = "public"
-  gateway_id = module.vpc.igw_id
+  ## Subnets
+  azs            = ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c"]
+  public_subnets = ["10.150.10.0/24", "10.150.20.0/24", "10.150.30.0/24"]
+  private_subnets = ["10.150.110.0/24", "10.150.120.0/24", "10.150.130.0/24"]
 
+  ## NAT Gateway 활성화 유무
+  nat_gateway_enabled = true
 
-  # public_subnet_tags = {
-  #   "kubernetes.io/cluster/${local.name}" = "shared"
-  #   "kubernetes.io/role/elb"              = 1
-  # }
-  # private_subnet_tags = {
-  #   "kubernetes.io/cluster/${local.name}" = "shared"
-  #   "kubernetes.io/role/internal-elb"     = 1
-  # }
+  ## 해당 Tag가 있어야 "aws-loadbalancer-controller 가 ingress 생성 시 internal/internetfacing 구분"
+  public_subnet_tags = {
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                      = 1
+  }
+  private_subnet_tags = {
+    "kubernetes.io/cluster/${local.name}" = "shared"
+    "kubernetes.io/role/internal-elb"     = 1
+  }
 
   tags = local.tags
 }

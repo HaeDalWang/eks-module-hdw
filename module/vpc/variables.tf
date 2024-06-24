@@ -1,4 +1,6 @@
-## VPC
+################################################################################
+# VPC
+################################################################################
 variable "name" {
   description = "VPC 이름"
   type        = string
@@ -15,56 +17,42 @@ variable "tags" {
   default     = {}
 }
 
-### Subnets
-variable "prefix" {
-  description = "서브넷 이름에 추가할 접두사"
-  type        = string
-}
-
-variable "suffix" {
-  description = "서브넷 이름에 추가할 접미사"
-  type        = string
-}
-
-variable "vpc_id" {
-  description = "서브넷을 생성할 VPC ID"
-  type        = string
-}
-
-variable "cidr" {
-  description = "생성할 서브넷들의 CIDR 목록"
-  type        = list(string)
-}
-
+################################################################################
+# Subnets
+################################################################################
 variable "azs" {
-  description = "CIDR 목록에 1:1 매칭 되는 가용영역 목록"
+  description = "서브넷의 가용영역"
   type        = list(string)
+  default     = []
 }
 
-variable "type" {
-  type        = string
-  description = "서브넷 종류 - public 또는 private"
-
-  validation {
-    condition     = contains(["public", "private"], var.type)
-    error_message = "Valid values for var: type are (public, private)."
-  }
+variable "public_subnets" {
+  description = "생성할 퍼블릭 서브넷의 CIDR"
+  type        = list(string)
+  default     = []
 }
 
-variable "tags" {
-  description = "생성될 리소스에 부여할 태그 목록"
+variable "public_subnet_tags" {
+  description = "퍼블릭 서브넷에 추가할 Tag"
   type        = map(string)
   default     = {}
 }
 
-variable "gateway_id" {
-  description = "인터넷 게이트웨이 ID - 서브넷 종류가 public 일때 명시"
-  type        = string
-  default     = ""
+
+variable "private_subnets" {
+  description = "생성할 프라이빗 서브넷의 CIDR"
+  type        = list(string)
+  default     = []
 }
 
-variable "nat_gateway_id" {
-  description = "NAT 게이트웨이 ID - 서브넷 종류가 private 일때 명시"
-  type        = string
-  default     = ""
+variable "private_subnet_tags" {
+  description = "프라이빗 서브넷에 추가할 Tag"
+  type        = map(string)
+  default     = {}
+}
+
+variable "nat_gateway_enabled" {
+  description = "NAT Gateway 활성화 유무"
+  type = bool
+  default = false
 }
