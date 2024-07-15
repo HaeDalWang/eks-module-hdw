@@ -3,7 +3,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 4.30.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 5.55.0 |
 
 ## Usage
 해당 모듈의 기본 사용법은 아래와 같습니다

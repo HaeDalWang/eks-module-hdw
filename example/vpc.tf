@@ -6,8 +6,8 @@ module "vpc" {
   cidr = "10.150.0.0/16"
 
   ## Subnets
-  azs            = ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c"]
-  public_subnets = ["10.150.10.0/24", "10.150.20.0/24", "10.150.30.0/24"]
+  azs             = ["ap-northeast-2a", "ap-northeast-2b", "ap-northeast-2c"]
+  public_subnets  = ["10.150.10.0/24", "10.150.20.0/24", "10.150.30.0/24"]
   private_subnets = ["10.150.110.0/24", "10.150.120.0/24", "10.150.130.0/24"]
 
   ## NAT Gateway 활성화 유무

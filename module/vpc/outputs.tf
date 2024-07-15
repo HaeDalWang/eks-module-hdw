@@ -3,7 +3,12 @@ output "vpc_id" {
   value       = aws_vpc.this.id
 }
 
-output "igw_id" {
-  description = "생성된 인터넷 게이트웨이 ID"
-  value       = aws_internet_gateway.this.id
+output "public_subnet_ids" {
+  value       = aws_subnet.public[*].id
+  description = "퍼블릭 서브넷 목록"
+}
+
+output "private_subnet_ids" {
+  value       = aws_subnet.private[*].id
+  description = "프라이빗 서브넷 목록"
 }
