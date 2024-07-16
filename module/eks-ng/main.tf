@@ -62,7 +62,7 @@ resource "aws_launch_template" "this" {
     }
   }
 
-  # user_data = base64encode(var.user_data)
+  user_data = base64encode(var.user_data)
 }
 
 # EKS 노드 그룹

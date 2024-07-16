@@ -28,7 +28,7 @@ module "nodegroup" {
   min_size       = 2
   max_size       = 5
 
-  # user_data = ""
+  user_data = ""
 
   tags = local.tags
 }
@@ -40,5 +40,7 @@ module "eks-addons" {
   cluster_version     = module.eks.cluster_version
   cluster_oidc_issuer = module.eks.cluster_oidc_provider
 
-  depends_on = [ module.nodegroup ]
+  depends_on = [ 
+    module.nodegroup 
+    ]
 }
