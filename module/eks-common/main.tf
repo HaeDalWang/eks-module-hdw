@@ -67,8 +67,23 @@ resource "helm_release" "cluster_autoscaler" {
   }
 }
 
+# AWS Load Balancer Controller 설치
+module "aws_load_balancer_controller" {
+  source = "../aws-load-balancer-controller"
+
+  chart_version       = var.aws_load_balancer_controller_chart_version
+  app_version         = var.aws_load_balancer_controller_app_version
+  cluster_name        = var.cluster_name
+  cluster_oidc_issuer = var.cluster_oidc_issuer
+
+  public_subnets  = var.public_subnet_ids
+  private_subnets = var.private_subnet_ids
+}
+
 # External DNS 설치
 resource "helm_release" "external_dns" {
+  count = var.enable_external_dns ? 1 : 0
+
   name       = "external-dns"
   repository = "https://kubernetes-sigs.github.io/external-dns"
   chart      = "external-dns"
@@ -91,42 +106,47 @@ resource "helm_release" "external_dns" {
   }
 }
 
-# AWS Load Balancer Controller 설치
-module "aws_load_balancer_controller" {
-  source = "../aws-load-balancer-controller"
-
-  chart_version       = var.aws_load_balancer_controller_chart_version
-  app_version         = var.aws_load_balancer_controller_app_version
-  cluster_name        = var.cluster_name
-  cluster_oidc_issuer = var.cluster_oidc_issuer
-
-  public_subnets  = var.public_subnet_ids
-  private_subnets = var.private_subnet_ids
+# Pod identity agent 
+data "aws_eks_addon_version" "pod-identity-agent" {
+  addon_name         = "eks-pod-identity-agent"
+  kubernetes_version = var.cluster_version
 }
+
+resource "aws_eks_addon" "pod-identity-agent" {
+  count = var.pod_identity_enabled ? 1 : 0
+
+  cluster_name      = var.cluster_name
+  addon_name        = "eks-pod-identity-agent"
+  addon_version     = data.aws_eks_addon_version.pod-identity-agent.version
+  ## 업그레이드 버전값이 충돌날때 해결하는 방법 유형 자세한건 API 문서 확인
+  ## https://docs.aws.amazon.com/eks/latest/APIReference/API_UpdateAddon.html#AmazonEKS-UpdateAddon-request-resolveConflicts
+  resolve_conflicts_on_update = "OVERWRITE"
+}
+
 
 # NGINX Ingress Controller 설치
-resource "helm_release" "nginx_ingress_controller" {
-  name       = "ingress-nginx"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  version    = var.nginx_ingress_controller_chart_version
-  namespace  = "kube-system"
-  timeout    = 900
+# resource "helm_release" "nginx_ingress_controller" {
+#   name       = "ingress-nginx"
+#   repository = "https://kubernetes.github.io/ingress-nginx"
+#   chart      = "ingress-nginx"
+#   version    = var.nginx_ingress_controller_chart_version
+#   namespace  = "kube-system"
+#   timeout    = 900
 
-  values = [
-    "${file("./helm_values/ingress-nginx_values.yaml")}"
-  ]
+#   values = [
+#     "${file("./helm_values/ingress-nginx_values.yaml")}"
+#   ]
 
-  dynamic "set" {
-    for_each = {
-      "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-ssl-cert" : var.acm_certificate_arn
-    }
-    content {
-      name  = set.key
-      value = set.value
-    }
-  }
-  depends_on = [
-    module.aws_load_balancer_controller.status
-  ]
-}
+#   dynamic "set" {
+#     for_each = {
+#       "controller.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-ssl-cert" : var.acm_certificate_arn
+#     }
+#     content {
+#       name  = set.key
+#       value = set.value
+#     }
+#   }
+#   depends_on = [
+#     module.aws_load_balancer_controller.status
+#   ]
+# }

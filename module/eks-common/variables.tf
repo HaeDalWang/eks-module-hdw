@@ -48,12 +48,13 @@ variable "external_dns_chart_version" {
 variable "external_dns_role_arn" {
   description = "External DNS에서 부여할 IAM 역할 ARN"
   type        = string
+  default = ""
 }
 
 variable "external_dns_domain_filters" {
   description = "External DNS에서 DNS 레코드를 생성할 도메인 주소 목록"
   type        = list(string)
-  default     = []
+  default     = [""]
 }
 
 variable "hostedzone_type" {
@@ -62,13 +63,30 @@ variable "hostedzone_type" {
   default     = ""
 }
 
-variable "nginx_ingress_controller_chart_version" {
-  description = "NGINX Ingress Controller 차트 버전"
-  type        = string
-}
+# variable "nginx_ingress_controller_chart_version" {
+#   description = "NGINX Ingress Controller 차트 버전"
+#   type        = string
+# }
 
 variable "acm_certificate_arn" {
   description = "Ingress Controller를 통해서 생성되는 NLB/ALB에 반영할 ACM 인증서"
   type        = string
   default     = ""
+}
+
+variable "cluster_version" {
+  description = "클러스터 버전"
+  type        = string
+}
+
+variable "pod_identity_enabled" {
+  description = "Pod_Identity  Addon 활성화 여부"
+  type        = bool
+  default     = false
+}
+
+variable "enable_external_dns" {
+  description = "external dns 활성화 여부"
+  type        = bool
+  default     = false
 }

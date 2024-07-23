@@ -17,6 +17,10 @@ terraform {
       source  = "alekc/kubectl"
       version = ">= 2.0.2"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = ">= 4.0.5"
+    }
   }
 }
 

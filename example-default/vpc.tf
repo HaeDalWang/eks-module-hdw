@@ -13,13 +13,13 @@ module "vpc" {
   ## NAT Gateway 활성화 유무
   nat_gateway_enabled = true
 
-  ## 해당 Tag가 있어야 "aws-loadbalancer-controller 가 ingress 생성 시 internal/internetfacing 구분"
+  # 해당 Tag가 있어야 "aws-loadbalancer-controller 가 ingress 생성 시 internal/internetfacing 구분"
   public_subnet_tags = {
-    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+    "kubernetes.io/cluster/${local.cluster_name}" = "owned"
     "kubernetes.io/role/elb"                      = 1
   }
   private_subnet_tags = {
-    "kubernetes.io/cluster/${local.name}" = "shared"
+    "kubernetes.io/cluster/${local.name}" = "owned"
     "kubernetes.io/role/internal-elb"     = 1
   }
 

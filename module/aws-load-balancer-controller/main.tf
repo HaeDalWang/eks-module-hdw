@@ -47,28 +47,44 @@ resource "helm_release" "this" {
 }
 
 # 모든 서브넷에 AWS Load Balancer Controller가 요구하는 태그 부여
-resource "aws_ec2_tag" "common" {
-  for_each = toset(concat(var.public_subnets, var.private_subnets))
+# resource "aws_ec2_tag" "common" {
+#   for_each = toset(concat(var.public_subnets, var.private_subnets))
 
-  resource_id = each.key
-  key         = "kubernetes.io/cluster/${var.cluster_name}"
-  value       = "owned"
-}
+#   resource_id = each.key
+#   key         = "kubernetes.io/cluster/${var.cluster_name}"
+#   value       = "owned"
+#     lifecycle {
+#     ignore_changes = [
+#       resource_id
+#     ]
+#   }
+# }
 
-# Scheme가 Internet-facing인 ELB를 생성할 서브넷에 요구되는 태그 부여
-resource "aws_ec2_tag" "public" {
-  for_each = toset(var.public_subnets)
+# # Scheme가 Internet-facing인 ELB를 생성할 서브넷에 요구되는 태그 부여
+# resource "aws_ec2_tag" "public" {
+#   for_each = toset(var.public_subnets)
 
-  resource_id = each.key
-  key         = "kubernetes.io/role/elb"
-  value       = "1"
-}
+#   resource_id = each.key
+#   key         = "kubernetes.io/role/elb"
+#   value       = "1"
+#     lifecycle {
+#     ignore_changes = [
+#       resource_id
+#     ]
+#   }
+# }
 
-# Scheme가 Internal인 ELB를 생성할 서브넷에 요구되는 태그 부여
-resource "aws_ec2_tag" "private" {
-  for_each = toset(var.private_subnets)
+# # Scheme가 Internal인 ELB를 생성할 서브넷에 요구되는 태그 부여
+# resource "aws_ec2_tag" "private" {
+#   for_each = toset(var.private_subnets)
 
-  resource_id = each.key
-  key         = "kubernetes.io/role/internal-elb"
-  value       = "1"
-}
+#   resource_id = each.key
+#   key         = "kubernetes.io/role/internal-elb"
+#   value       = "1"
+
+#     lifecycle {
+#     ignore_changes = [
+#       resource_id
+#     ]
+#   }
+# }
