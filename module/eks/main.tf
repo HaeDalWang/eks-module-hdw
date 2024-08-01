@@ -52,10 +52,9 @@ resource "aws_eks_cluster" "this" {
     security_group_ids      = [aws_security_group.eks_security_group.id]
   }
 
-  # access_config {
-  #   authentication_mode = var.authentication_mode
-  #   bootstrap_cluster_creator_admin_permissions = true
-  # }
+  access_config {
+    authentication_mode = var.authentication_mode
+  }
 
   tags = var.tags
 
@@ -78,4 +77,47 @@ resource "aws_iam_openid_connect_provider" "oidc_provider" {
     { "eks:cluster-name" = "${var.cluster_name}" },
     var.tags
   )
+}
+
+## Fargate 실행에 필요한 권한 생성
+resource "aws_iam_role" "fargate_profile" {
+  count = var.fargate_profiles != null && var.fargate_profiles != {} ? 1 : 0
+
+  name = "eks-fargate-profile-execution"
+
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks-fargate-pods.amazonaws.com"
+      }
+    }]
+    Version = "2012-10-17"
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "AmazonEKSFargatePodExecutionRolePolicy" {
+  count = var.fargate_profiles != null && var.fargate_profiles != {} ? 1 : 0
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+  role       = aws_iam_role.fargate_profile[0].name
+}
+
+## Fargate Profile 구성
+resource "aws_eks_fargate_profile" "this" {
+  for_each = var.fargate_profiles
+  cluster_name           = var.cluster_name
+  fargate_profile_name   = each.key
+
+  pod_execution_role_arn = aws_iam_role.fargate_profile[0].arn
+  subnet_ids             = var.vpc_subnet_ids
+
+  dynamic "selector" {
+    for_each = each.value.selectors
+    content{
+      namespace = selector.value.namespace
+      labels    = lookup(selector.value, "labels", {})
+    }
+  }
 }

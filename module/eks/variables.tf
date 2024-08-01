@@ -41,3 +41,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "fargate_profiles" {
+  description = "Fargate Profile 설정 block"
+  type        = any
+  default     = {}
+}
+

@@ -33,12 +33,15 @@ data "aws_eks_addon_version" "coredns" {
 }
 
 resource "aws_eks_addon" "coredns" {
+  count  = var.enabled_coredns ? 1 : 0
   cluster_name      = var.cluster_name
   addon_name        = "coredns"
   addon_version     = data.aws_eks_addon_version.coredns.version
   ## 업그레이드 버전값이 충돌날때 해결하는 방법 유형 자세한건 API 문서 확인
   ## https://docs.aws.amazon.com/eks/latest/APIReference/API_UpdateAddon.html#AmazonEKS-UpdateAddon-request-resolveConflicts
   resolve_conflicts_on_update = "OVERWRITE"
+
+  configuration_values = jsonencode(var.coredns_configuration_values)
 }
 
 # Kube-proxy
