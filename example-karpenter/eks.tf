@@ -66,6 +66,8 @@ resource "aws_eks_addon" "coredns" {
       }
     }
   })
+
+  depends_on = [ module.eks ]
 }
 
 ## Karpenter 배포 시 필요한 리소스 생성 모듈
@@ -86,6 +88,11 @@ module "karpenter" {
     AmazonEBSCSIDriverPolicy     = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
     AmazonEFSCSIDriverPolicy     = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
   }
+
+  ## SQS
+  ## Event bridge
+
+  depends_on = [ module.eks ]
 }
 
 # Karpenter를 배포할 네임 스페이스
@@ -119,49 +126,100 @@ resource "helm_release" "karpenter" {
         eks.amazonaws.com/role-arn: ${module.karpenter.iam_role_arn}
     EOT
   ]
+
+  depends_on = [ resource.aws_eks_addon.coredns ]
 }
 
 ## NodeClass
+## 일종의 노드 템플릿과 비슷하다
+## 아마존 리눅스 2/ gp3 40Gi/
+## securityGroupSelectorTerms.id 부분관련 링크
+## https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/sec-group-reqs.html
+resource "kubectl_manifest" "karpenter_default_node_class" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.k8s.aws/v1beta1
+    kind: EC2NodeClass
+    metadata:
+      name: default
+    spec:
+      amiFamily: AL2
+      role: ${module.karpenter.node_iam_role_name}
+      subnetSelectorTerms:
+      - tags:
+          karpenter.sh/discovery: ${module.eks.cluster_id}
+      securityGroupSelectorTerms:
+      - id: ${module.eks.cluster_primary_security_group_id}
+      blockDeviceMappings:
+      - deviceName: /dev/xvda
+        ebs:
+          volumeSize: 40Gi
+          volumeType: gp3
+          encrypted: true
+      tags:
+        ${jsonencode(local.tags)}
+    YAML
 
-## NodePool
+  depends_on = [
+    helm_release.karpenter
+  ]
+}
 
+## NodePool 
+## 일종의 노드그룹과 비슷하다
+## x86/ 온디맨드/ c5,m5,r5/ Pool의 CPU 10core/ 만료기간: 720H
+resource "kubectl_manifest" "karpenter_default_nodepool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1beta1
+    kind: NodePool
+    metadata:
+      name: default
+    spec:
+      weight: 50
+      template:
+        spec:
+          requirements:
+          - key: kubernetes.io/arch
+            operator: In
+            values: ["amd64"]
+          - key: kubernetes.io/os
+            operator: In
+            values: ["linux"]
+          - key: karpenter.sh/capacity-type
+            operator: In
+            values: ["on-demand"]
+          - key: karpenter.k8s.aws/instance-category
+            operator: In
+            # values: ["c", "m", "r"]
+            values: ["m"]
+          - key: karpenter.k8s.aws/instance-generation
+            operator: In
+            values: ["5"]
+          nodeClassRef:
+            apiVersion: karpenter.k8s.aws/v1beta1
+            kind: EC2NodeClass
+            name: "default"
+      limits:
+        cpu: 1000
+      disruption:
+        consolidationPolicy: WhenUnderutilized
+        expireAfter: 720h
+  YAML
 
-# module er"eks-addons" {
-#   source = "../module/eks-addons"
+  depends_on = [
+    kubectl_manifest.karpenter_default_node_class
+  ]
+}
 
-#   cluster_name        = module.eks.cluster_id
-#   cluster_version     = module.eks.cluster_version
-#   cluster_oidc_issuer = module.eks.cluster_oidc_provider
+module "eks-addons" {
+  source = "../module/eks-addons"
 
-#   enabled_coredns = false
+  cluster_name        = module.eks.cluster_id
+  cluster_version     = module.eks.cluster_version
+  cluster_oidc_issuer = module.eks.cluster_oidc_provider
+
+  enabled_coredns = false
   
-#   depends_on = [
-#     module.eks
-#   ]
-# }
-
-# module "eks_common" {
-#   source = "../module/eks-common"
-
-#   cluster_name        = module.eks.cluster_id
-#   cluster_version     = module.eks.cluster_version
-#   cluster_oidc_issuer = module.eks.cluster_oidc_provider
-
-#   public_subnet_ids  = module.vpc.public_subnet_ids
-#   private_subnet_ids = module.vpc.private_subnet_ids
-
-#   metric_server_chart_version                = "3.12.1"
-#   cluster_autoscaler_chart_version           = "9.37.0"
-#   external_dns_chart_version                 = "1.14.5"
-#   aws_load_balancer_controller_chart_version = "1.8.1"
-#   aws_load_balancer_controller_app_version   = "v2.8.1"
-#   # nginx_ingress_controller_chart_version     = "4.6.0"
-
-#   enable_external_dns = false
-#   # external_dns_domain_filters = ["seungdobae.com"]
-#   # external_dns_role_arn       = "arn:aws:iam::032559872243:role/ExternalDNSRole"
-#   # hostedzone_type             = "private"
-#   # acm_certificate_arn         = data.terraform_remote_state.common.outputs.mng_ptspro_refinehub_com
-
-#   pod_identity_enabled = true
-# }
+  depends_on = [
+    kubectl_manifest.karpenter_default_nodepool
+  ]
+}

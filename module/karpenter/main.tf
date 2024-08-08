@@ -551,3 +551,18 @@ resource "aws_cloudwatch_event_target" "this" {
   target_id = "KarpenterInterruptionQueueTarget"
   arn       = aws_sqs_queue.this.arn
 }
+
+################################################################################
+# Access Entry
+################################################################################
+
+resource "aws_eks_access_entry" "node" {
+  cluster_name  = var.cluster_name
+  principal_arn = aws_iam_role.node.arn
+  type = "EC2_LINUX"
+
+  depends_on = [
+    # If we try to add this too quickly, it fails. So .... we wait
+    aws_sqs_queue_policy.this
+  ]
+}
