@@ -103,6 +103,19 @@ resource "kubernetes_namespace" "karpenter" {
   }
 }
 
+# Karpenter CRD 배포
+resource "helm_release" "karpenter_crd" {
+  name       = "karpenter-crd"
+  repository = "oci://public.ecr.aws/karpenter"
+  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
+  repository_password = data.aws_ecrpublic_authorization_token.token.password
+  chart      = "karpenter-crd"
+  version    = "1.0.2"
+  namespace  = kubernetes_namespace.karpenter.metadata[0].name
+
+  depends_on = [ resource.aws_eks_addon.coredns ]
+} 
+
 # Karpenter 배포
 resource "helm_release" "karpenter" {
   name       = "karpenter"
@@ -110,7 +123,7 @@ resource "helm_release" "karpenter" {
   repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   repository_password = data.aws_ecrpublic_authorization_token.token.password
   chart      = "karpenter"
-  version    = "0.37.0"
+  version    = "1.0.2"
   namespace  = kubernetes_namespace.karpenter.metadata[0].name
 
   values = [
@@ -127,7 +140,10 @@ resource "helm_release" "karpenter" {
     EOT
   ]
 
-  depends_on = [ resource.aws_eks_addon.coredns ]
+  depends_on = [ 
+    resource.helm_release.karpenter_crd,
+    resource.aws_eks_addon.coredns 
+    ]
 }
 
 ## NodeClass
@@ -137,12 +153,13 @@ resource "helm_release" "karpenter" {
 ## https://docs.aws.amazon.com/ko_kr/eks/latest/userguide/sec-group-reqs.html
 resource "kubectl_manifest" "karpenter_default_node_class" {
   yaml_body = <<-YAML
-    apiVersion: karpenter.k8s.aws/v1beta1
+    apiVersion: karpenter.k8s.aws/v1
     kind: EC2NodeClass
     metadata:
       name: default
     spec:
-      amiFamily: AL2
+      amiSelectorTerms:
+      - alias: al2@latest
       role: ${module.karpenter.node_iam_role_name}
       subnetSelectorTerms:
       - tags:
@@ -169,7 +186,7 @@ resource "kubectl_manifest" "karpenter_default_node_class" {
 ## x86/ 온디맨드/ c5,m5,r5/ Pool의 CPU 10core/ 만료기간: 720H
 resource "kubectl_manifest" "karpenter_default_nodepool" {
   yaml_body = <<-YAML
-    apiVersion: karpenter.sh/v1beta1
+    apiVersion: karpenter.sh/v1
     kind: NodePool
     metadata:
       name: default
@@ -198,11 +215,12 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
             apiVersion: karpenter.k8s.aws/v1beta1
             kind: EC2NodeClass
             name: "default"
+            group: karpenter.k8s.aws
       limits:
         cpu: 1000
       disruption:
-        consolidationPolicy: WhenUnderutilized
-        expireAfter: 720h
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 720h
   YAML
 
   depends_on = [
