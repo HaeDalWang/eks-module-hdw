@@ -76,7 +76,7 @@ module "karpenter" {
   cluster_name = module.eks.cluster_id
 
   # 해당 모듈은 기본적으로 무조건 Spot에 대해 사용한다는 가정
-  enabled_spot_linked_role= true
+  # enabled_spot_linked_role= true
 
   # Karpenter에 부여할 IAM 역할 생성 
   # 무조건 IRSA을 통해 ServiceAccount 생성
@@ -194,6 +194,7 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
       weight: 50
       template:
         spec:
+          expireAfter: 720h
           requirements:
           - key: kubernetes.io/arch
             operator: In
@@ -219,8 +220,8 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
       limits:
         cpu: 1000
       disruption:
-        consolidationPolicy: WhenEmptyOrUnderutilized
-        consolidateAfter: 720h
+        consolidationPolicy: WhenEmptyOrUnderutilized ## 조건부를 적는 칸이였음! 노드가 비었거나(비데몬 파드) 사용률이 적은게 조건임 지금은
+        consolidateAfter: 1m ## 조건에 부합하면 몇 시간후에 통합 가능 할꺼냐는 의미 1s드면 바로 삭제함!
   YAML
 
   depends_on = [

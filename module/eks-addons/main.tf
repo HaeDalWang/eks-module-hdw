@@ -1,14 +1,15 @@
 # AWS VPC CNI에 부여할 IAM 정책을 포함하는 ServiceAccount 생성
-module "vpc_cni_sa" {
-  source = "../eks-irsa"
+# 음.... 왜 넣었지 어차피 노드Role로 될텐데 기억이 없네
+# module "vpc_cni_sa" {
+#   source = "../eks-irsa"
 
-  name                 = "aws-node"
-  cluster_name         = var.cluster_name
-  cluster_oidc_issuer  = var.cluster_oidc_issuer
-  namespace            = "kube-system"
-  managed_policy_arns  = ["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]
-  create_iam_role_only = true
-}
+#   name                 = "aws-node"
+#   cluster_name         = var.cluster_name
+#   cluster_oidc_issuer  = var.cluster_oidc_issuer
+#   namespace            = "kube-system"
+#   managed_policy_arns  = ["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]
+#   create_iam_role_only = true
+# }
 
 # AWS VPC CNI Add-on 활성화
 data "aws_eks_addon_version" "vpc_cni" {
@@ -20,7 +21,8 @@ resource "aws_eks_addon" "vpc_cni" {
   cluster_name             = var.cluster_name
   addon_name               = "vpc-cni"
   addon_version            = data.aws_eks_addon_version.vpc_cni.version
-  service_account_role_arn = module.vpc_cni_sa.role_arn
+
+  # service_account_role_arn = module.vpc_cni_sa.role_arn
   ## 업그레이드 버전값이 충돌날때 해결하는 방법 유형 자세한건 API 문서 확인
   ## https://docs.aws.amazon.com/eks/latest/APIReference/API_UpdateAddon.html#AmazonEKS-UpdateAddon-request-resolveConflicts
   resolve_conflicts_on_update = "OVERWRITE"

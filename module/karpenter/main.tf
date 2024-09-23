@@ -428,13 +428,6 @@ resource "aws_iam_role_policy_attachment" "node_additional" {
 # 카펜터가 노드 Disruption 하기위한 이벤트와 큐 생성
 ################################################################################
 
-## Spot instacne Service-Linked-Role
-## https://docs.aws.amazon.com/cli/latest/reference/iam/create-service-linked-role.html
-# resource "aws_iam_service_linked_role" "spot_instance" {
-#   count = var.enabled_spot_linked_role ? 1 : 0
-#   aws_service_name = "spot.amazonaws.com"
-# }
-
 ################################################################################
 # Node Termination Queue
 ################################################################################
