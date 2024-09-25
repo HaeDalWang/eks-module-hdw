@@ -172,6 +172,8 @@ resource "kubectl_manifest" "karpenter_default_node_class" {
           volumeSize: 40Gi
           volumeType: gp3
           encrypted: true
+      metadataOptions:
+        httpPutResponseHopLimit: 2 ## IMDSv2를 사용하기 위해서는 2개 노드 홉이 필요합니다
       tags:
         ${jsonencode(local.tags)}
     YAML
