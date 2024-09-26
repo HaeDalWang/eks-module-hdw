@@ -272,7 +272,7 @@ module "eks_common" {
   aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
   enabled_external_dns                       = true
   external_dns_chart_version                 = var.external_dns_chart_version
-  external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae}"]
+  external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae.name}"]
   hostedzone_type                            = "public"
 
   pod_identity_enabled = true
