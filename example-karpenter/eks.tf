@@ -272,10 +272,8 @@ module "eks_common" {
   aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
   enabled_external_dns                       = true
   external_dns_chart_version                 = var.external_dns_chart_version
-  # external_dns_domain_filters = ["seungdobae.com"]
-  # external_dns_role_arn       = "arn:aws:iam::032559872243:role/ExternalDNSRole"
-  # hostedzone_type             = "private"
-  # acm_certificate_arn         = data.terraform_remote_state.common.outputs.mng_ptspro_refinehub_com
+  external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae}"]
+  hostedzone_type                            = "public"
 
   pod_identity_enabled = true
 }

@@ -2,6 +2,7 @@ data "aws_region" "current" {}
 
 # Metric Server 설치
 resource "helm_release" "metric_server" {
+  count      = var.enabled_metric_server ? 1 : 0
   name       = "metrics-server"
   repository = "https://kubernetes-sigs.github.io/metrics-server"
   chart      = "metrics-server"
@@ -12,6 +13,7 @@ resource "helm_release" "metric_server" {
 
 # Cluster Autoscaler에 사용할 IRSA 생성
 module "cluster_autoscaler_sa" {
+  count  = var.enabled_cluster_autoscaler ? 1 : 0
   source = "../eks-irsa"
 
   name                = "cluster-autoscaler"
@@ -44,6 +46,7 @@ EOF
 
 # Cluster Autoscaler 설치
 resource "helm_release" "cluster_autoscaler" {
+  count      = var.enabled_cluster_autoscaler ? 1 : 0
   name       = "cluster-autoscaler"
   repository = "https://kubernetes.github.io/autoscaler"
   chart      = "cluster-autoscaler"
@@ -69,6 +72,7 @@ resource "helm_release" "cluster_autoscaler" {
 
 # AWS Load Balancer Controller 설치
 module "aws_load_balancer_controller" {
+  count  = var.enabled_aws_load_balancer_controller ? 1 : 0
   source = "../aws-load-balancer-controller"
 
   chart_version       = var.aws_load_balancer_controller_chart_version
@@ -80,9 +84,49 @@ module "aws_load_balancer_controller" {
   private_subnets = var.private_subnet_ids
 }
 
+# ExternalDNS에서 사용할 IRSA 생성
+module "external_dns_sa" {
+  count  = var.enabled_external_dns ? 1 : 0
+  source = "../eks-irsa"
+
+  name                = "external-dns-sa"
+  namespace           = "kube-system"
+  cluster_name        = var.cluster_name
+  cluster_oidc_issuer = var.cluster_oidc_issuer
+
+  ## 최소권한의 규칙을 챙기기 위해서는 호스트존을 변수에 따라 변경하도록 조정해야함
+  policy_document = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": [
+        "arn:aws:route53:::hostedzone/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListHostedZones",
+        "route53:ListResourceRecordSets",
+        "route53:ListTagsForResource"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
 # External DNS 설치
 resource "helm_release" "external_dns" {
-  count = var.enable_external_dns ? 1 : 0
+  count = var.enabled_external_dns ? 1 : 0
 
   name       = "external-dns"
   repository = "https://kubernetes-sigs.github.io/external-dns"
@@ -93,17 +137,19 @@ resource "helm_release" "external_dns" {
 
   dynamic "set" {
     for_each = {
-      "serviceAccount.create"                                     = true
-      "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" = var.external_dns_role_arn
-      "txtOwnerId"                                                = var.cluster_name
-      "domainFilters"                                             = "{${join(",", var.external_dns_domain_filters)}}"
-      "extraArgs"                                                 = "{--aws-zone-type=${var.hostedzone_type}}"
+      "serviceAccount.create" = false
+      "serviceAccount.name"   = module.external_dns_sa.serviceaccount_name
+      "txtOwnerId"    = var.cluster_name
+      "domainFilters" = "{${join(",", var.external_dns_domain_filters)}}"
+      "extraArgs"     = "{--aws-zone-type=${var.hostedzone_type}}"
     }
     content {
       name  = set.key
       value = set.value
     }
   }
+
+  depends_on = [module.external_dns_sa]
 }
 
 # Pod identity agent 
@@ -115,17 +161,17 @@ data "aws_eks_addon_version" "pod-identity-agent" {
 resource "aws_eks_addon" "pod-identity-agent" {
   count = var.pod_identity_enabled ? 1 : 0
 
-  cluster_name      = var.cluster_name
-  addon_name        = "eks-pod-identity-agent"
-  addon_version     = data.aws_eks_addon_version.pod-identity-agent.version
+  cluster_name  = var.cluster_name
+  addon_name    = "eks-pod-identity-agent"
+  addon_version = data.aws_eks_addon_version.pod-identity-agent.version
   ## 업그레이드 버전값이 충돌날때 해결하는 방법 유형 자세한건 API 문서 확인
   ## https://docs.aws.amazon.com/eks/latest/APIReference/API_UpdateAddon.html#AmazonEKS-UpdateAddon-request-resolveConflicts
   resolve_conflicts_on_update = "OVERWRITE"
 }
 
-
-# NGINX Ingress Controller 설치
+# # NGINX Ingress Controller 설치
 # resource "helm_release" "nginx_ingress_controller" {
+#   count = var.enabled_nginx_ingress_controller ? 1 : 0
 #   name       = "ingress-nginx"
 #   repository = "https://kubernetes.github.io/ingress-nginx"
 #   chart      = "ingress-nginx"
