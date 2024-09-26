@@ -40,7 +40,7 @@ variable "enabled_metric_server" {
 variable "metric_server_chart_version" {
   description = "Metric Server 헬름 차트 버전"
   type        = string
-  default     = []
+  default     = ""
 }
 
 variable "enabled_cluster_autoscaler" {
@@ -52,7 +52,7 @@ variable "enabled_cluster_autoscaler" {
 variable "cluster_autoscaler_chart_version" {
   description = "Cluster Autoscaler 헬름 차트 버전"
   type        = string
-  default     = []
+  default     = ""
 }
 
 variable "enabled_aws_load_balancer_controller" {
@@ -80,7 +80,7 @@ variable "enabled_external_dns" {
 variable "external_dns_chart_version" {
   description = "External DNS 차트 버전"
   type        = string
-  default     = []
+  default     = ""
 }
 
 variable "external_dns_domain_filters" {
