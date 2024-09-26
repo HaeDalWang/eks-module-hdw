@@ -23,6 +23,11 @@ variable "aws_load_balancer_controller_chart_version" {
   type        = string
 }
 
+variable "aws_load_balancer_controller_app_version" {
+  description = "aws_load_balancer_controller_app_version"
+  type        = string
+}
+
 variable "metrics_server_chart_version" {
   description = "metrics_server_chart_version"
   type        = string

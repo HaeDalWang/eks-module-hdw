@@ -231,6 +231,7 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
   ]
 }
 
+## vpc-cni, coredns, kube-proxy, ebs-csi driver 설치하는 모듈
 module "eks-addons" {
   source = "../module/eks-addons"
 
@@ -243,4 +244,38 @@ module "eks-addons" {
   depends_on = [
     kubectl_manifest.karpenter_default_nodepool
   ]
+}
+
+## common echo 프로그램 설치
+## ClusterAutoSclaer
+## metrics server
+## aws lb controller
+## ingress nginx
+## external dns
+## pod identity agent
+module "eks_common" {
+  source = "../module/eks-common"
+
+  cluster_name        = module.eks.cluster_id
+  cluster_version     = module.eks.cluster_version
+  cluster_oidc_issuer = module.eks.cluster_oidc_provider
+
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  private_subnet_ids = module.vpc.private_subnet_ids
+
+  enabled_cluster_autoscaler = false
+
+  enabled_metric_server                      = true
+  metric_server_chart_version                = var.metrics_server_chart_version
+  enabled_aws_load_balancer_controller       = true
+  aws_load_balancer_controller_chart_version = var.aws_load_balancer_controller_chart_version
+  aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
+  enabled_external_dns                       = true
+  external_dns_chart_version                 = var.external_dns_chart_version
+  # external_dns_domain_filters = ["seungdobae.com"]
+  # external_dns_role_arn       = "arn:aws:iam::032559872243:role/ExternalDNSRole"
+  # hostedzone_type             = "private"
+  # acm_certificate_arn         = data.terraform_remote_state.common.outputs.mng_ptspro_refinehub_com
+
+  pod_identity_enabled = true
 }
