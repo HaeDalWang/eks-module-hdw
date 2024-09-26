@@ -29,8 +29,8 @@ module "eks" {
         {
           namespace = "kube-system"
           labels = {
-            "k8s-app" = "kube-dns"         
-            }
+            "k8s-app" = "kube-dns"
+          }
         }
       ]
     }
@@ -48,9 +48,9 @@ data "aws_eks_addon_version" "coredns" {
   kubernetes_version = module.eks.cluster_version
 }
 resource "aws_eks_addon" "coredns" {
-  cluster_name      = module.eks.cluster_id
-  addon_name        = "coredns"
-  addon_version     = data.aws_eks_addon_version.coredns.version
+  cluster_name                = module.eks.cluster_id
+  addon_name                  = "coredns"
+  addon_version               = data.aws_eks_addon_version.coredns.version
   resolve_conflicts_on_update = "OVERWRITE"
 
   configuration_values = jsonencode({
@@ -67,12 +67,12 @@ resource "aws_eks_addon" "coredns" {
     }
   })
 
-  depends_on = [ module.eks ]
+  depends_on = [module.eks]
 }
 
 ## Karpenter 배포 시 필요한 리소스 생성 모듈
 module "karpenter" {
-  source  = "../module/karpenter"
+  source       = "../module/karpenter"
   cluster_name = module.eks.cluster_id
 
   # 해당 모듈은 기본적으로 무조건 Spot에 대해 사용한다는 가정
@@ -92,7 +92,7 @@ module "karpenter" {
   ## SQS
   ## Event bridge
 
-  depends_on = [ module.eks ]
+  depends_on = [module.eks]
 }
 
 # Karpenter를 배포할 네임 스페이스
@@ -105,26 +105,26 @@ resource "kubernetes_namespace" "karpenter" {
 
 # Karpenter CRD 배포
 resource "helm_release" "karpenter_crd" {
-  name       = "karpenter-crd"
-  repository = "oci://public.ecr.aws/karpenter"
+  name                = "karpenter-crd"
+  repository          = "oci://public.ecr.aws/karpenter"
   repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart      = "karpenter-crd"
-  version    = "1.0.2"
-  namespace  = kubernetes_namespace.karpenter.metadata[0].name
+  chart               = "karpenter-crd"
+  version             = var.karpenter_crd_version
+  namespace           = kubernetes_namespace.karpenter.metadata[0].name
 
-  depends_on = [ resource.aws_eks_addon.coredns ]
-} 
+  depends_on = [resource.aws_eks_addon.coredns]
+}
 
 # Karpenter 배포
 resource "helm_release" "karpenter" {
-  name       = "karpenter"
-  repository = "oci://public.ecr.aws/karpenter"
+  name                = "karpenter"
+  repository          = "oci://public.ecr.aws/karpenter"
   repository_username = data.aws_ecrpublic_authorization_token.token.user_name
   repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart      = "karpenter"
-  version    = "1.0.2"
-  namespace  = kubernetes_namespace.karpenter.metadata[0].name
+  chart               = "karpenter"
+  version             = var.karpenter_version
+  namespace           = kubernetes_namespace.karpenter.metadata[0].name
 
   values = [
     <<-EOT
@@ -140,10 +140,10 @@ resource "helm_release" "karpenter" {
     EOT
   ]
 
-  depends_on = [ 
+  depends_on = [
     resource.helm_release.karpenter_crd,
-    resource.aws_eks_addon.coredns 
-    ]
+    resource.aws_eks_addon.coredns
+  ]
 }
 
 ## NodeClass
@@ -239,7 +239,7 @@ module "eks-addons" {
   cluster_oidc_issuer = module.eks.cluster_oidc_provider
 
   enabled_coredns = false
-  
+
   depends_on = [
     kubectl_manifest.karpenter_default_nodepool
   ]

@@ -13,15 +13,15 @@ module "vpc" {
   ## NAT Gateway 활성화 유무
   nat_gateway_enabled = true
 
-  ## aws-loadbalancer-controller & karpenter 요구사항에 Tag 추가
+  ## aws-loadbalancer-controller & karpenter 에 필요한 요구사항 Tag 추가
   public_subnet_tags = {
     "kubernetes.io/cluster/${local.cluster_name}" = "owned"
     "kubernetes.io/role/elb"                      = 1
   }
   private_subnet_tags = {
-    "karpenter.sh/discovery" = "${local.cluster_name}"
+    "karpenter.sh/discovery"                      = "${local.cluster_name}"
     "kubernetes.io/cluster/${local.cluster_name}" = "owned"
-    "kubernetes.io/role/internal-elb"     = 1
+    "kubernetes.io/role/internal-elb"             = 1
   }
 
   tags = local.tags
