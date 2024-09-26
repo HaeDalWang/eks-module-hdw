@@ -60,7 +60,7 @@ resource "helm_release" "cluster_autoscaler" {
       "awsRegion"                  = data.aws_region.current.name
       "autoDiscovery.clusterName"  = var.cluster_name
       "rbac.serviceAccount.create" = false
-      "rbac.serviceAccount.name"   = module.cluster_autoscaler_sa.serviceaccount_name
+      "rbac.serviceAccount.name"   = module.cluster_autoscaler_sa[0].serviceaccount_name
       "service.create"             = false
     }
     content {
@@ -89,7 +89,7 @@ module "external_dns_sa" {
   count  = var.enabled_external_dns ? 1 : 0
   source = "../eks-irsa"
 
-  name                = "external-dns-sa"
+  name                = "external-dns"
   namespace           = "kube-system"
   cluster_name        = var.cluster_name
   cluster_oidc_issuer = var.cluster_oidc_issuer
@@ -138,7 +138,7 @@ resource "helm_release" "external_dns" {
   dynamic "set" {
     for_each = {
       "serviceAccount.create" = false
-      "serviceAccount.name"   = module.external_dns_sa.serviceaccount_name
+      "serviceAccount.name"   = module.external_dns_sa[0].serviceaccount_name
       "txtOwnerId"    = var.cluster_name
       "domainFilters" = "{${join(",", var.external_dns_domain_filters)}}"
       "extraArgs"     = "{--aws-zone-type=${var.hostedzone_type}}"
