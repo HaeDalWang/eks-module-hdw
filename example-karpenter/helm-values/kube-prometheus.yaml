@@ -1,0 +1,260 @@
+fullnameOverride: kube-prometheus
+# -----------------------------------------
+# Prometheus 설정
+# -----------------------------------------
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    hosts:
+    - "prometheus.seungdobae.com"
+    pathType: Prefix
+    annotations:
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: "monitoring-alb-group"
+
+  prometheusSpec:
+    disableCompaction: true
+
+    # 수집 Selector의 대한 조건부를 무시 
+    # serviceMonitor/podMonitor의 경우 동일 네임스페이스가 아닌경우 Label: <helm릴리즈 이름> 모니터만 검색
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+    # 수집 주기 기본값: 30s
+    scrapeInterval: ""
+
+    # 수집 타임아웃 시간 기본값: 10s
+    scrapeTimeout: ""
+
+    # 알림 평가 시간 기본값: 30s
+    # 수집 주기와 동일하게 하는것을 권장 (공식문서)
+    evaluationInterval: ""
+
+    # 보관 시간 기본값: 10d 
+    # 시간이 지난 메트릭은 삭제된다 // 데이터 유지관리를 위해서 타노스를 사용해야한다
+    retention: 6h
+
+    # prometheus가 사용할 스토리지 스팩
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    # 추가적인 수집을 위한 설정 추가시 사용
+    additionalScrapeConfigs: []
+
+# 커스텀 알람규칙 Rule 추가 
+# 확인은 Prometheus.yml의 rules
+additionalPrometheusRules:
+  - name: custom-rule1
+    groups:
+    - name: devops-team
+      rules:
+      - alert: NodeMemory15percent
+        expr: (100 * (1- ((node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes) / node_memory_MemTotal_bytes))) > 15
+        for: 5s
+        labels:
+          severity: critical
+        annotations:
+          summary: Node Memory Usage 15% up (instance {{ $labels.instance }})
+          description: "Node Memory usage is 15% for 5s\n VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+# -----------------------------------------
+# Alertmanager 설정
+# -----------------------------------------
+alertmanager:
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    hosts:
+    - "alertmanager.seungdobae.com"
+    pathType: Prefix
+    annotations:
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: "monitoring-alb-group"
+  serviceMonitor:
+    selfMonitor: false
+  
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['job']
+      group_wait: 30s # 초기 알람 대기시간
+      group_interval: 20s # 그룹당 대기시간
+      repeat_interval: 10m # 재전송 대기시
+      receiver: 'EKS-monitoring' # 수신 매채
+      routes:
+      - receiver: 'EKS-monitoring' 
+        group_wait: 10s
+    receivers:
+    - name: 'EKS-monitoring'
+      slack_configs:
+      - channel: 'test'
+        # 웹훅 주소
+        api_url: "https://hooks.slack.com/services/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"
+        # 해결된 알람을 보냄? 기본값: false
+        send_resolved: true
+        title: "{{ range .Alerts }}{{ .Annotations.summary }} \n {{ end }}"
+        text: "<!channel> \n summary: {{ .CommonAnnotations.summary }} \n description: {{ .CommonAnnotations.description }}"
+
+# -----------------------------------------
+# Grafana 설정
+# 그라파나 서브 차트 참고
+# -----------------------------------------
+grafana:
+  adminPassword: ${grafana_admin_password}
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    hosts:
+    - "grafana.seungdobae.com"
+    pathType: Prefix
+    annotations:
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: "monitoring-alb-group"
+  serviceMonitor:
+    enabled: false
+
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClassName: ebs-sc
+
+  sidecar:
+    datasources:
+      defaultDatasourceEnabled: true
+
+  # 모든 플러그인: https://grafana.com/grafana/plugins/
+  plugins:
+    - digrich-bubblechart-panel
+    - grafana-clock-panel
+
+# 대시 보드 구성 GrafanaLab 불러오기
+  dashboardProviders:
+
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'grafana-lab'
+        orgId: 1
+        folder: 'grafana-lab'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/grafana-lab
+
+  dashboards:
+    grafana-lab:
+      node-exporter:
+        gnetId: 1860
+        revision: 31
+        datasource: default
+# -----------------------------------------
+# node exporters 배포 시 Fargate을 피해가도록 수정
+# -----------------------------------------
+prometheus-node-exporter:
+  priorityClassName: system-node-critical
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: eks.amazonaws.com/compute-type
+              operator: NotIn
+              values:
+                - fargate
+# -----------------------------------------
+# 추가 배포 exporters
+# -----------------------------------------
+
+## 수집을 위해 추가적으로 배포할 exporter,servicemonitor 항목들
+
+## cAdvisor, metrics, probes 
+kubelet:
+  enabled: true
+## kube-api 서버의 대한 객체들(리소스)의 대한 메트릭 수집
+## pod갯수, pv 갯수 등등
+kubeStateMetrics:
+  enabled: true
+## 노드들의 대한 메트릭(cpu, memory, starttime, 등등)
+nodeExporter:
+  enabled: true
+
+kubeApiServer:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+coreDns:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# -----------------------------------------
+# 추가 RuleSet
+# 사용할 항목의 대한 것만 활성화하는 것이 바람직하다
+# -----------------------------------------
+defaultRules:
+  create: true
+  rules:
+    # 
+    k8s: true
+    # pod,deployment,replicaset,statefullset 등의 상태 
+    kubernetesApps: true
+    # PV/PVC 관련 
+    kubernetesStorage: true
+    # 버전체크, 클라이언트 에러체크
+    kubernetesSystem: true
+    # 노드의 cpu사용률, 메모리 사용률 등
+    node: true
+
+    alertmanager: false
+    etcd: false
+    configReloaders: false
+    general: false
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
+    kubelet: false
+    kubeProxy: false
+    kubePrometheusGeneral: false
+    kubePrometheusNodeRecording: false
+    kubernetesResources: false
+    kubeScheduler: false
+    kubeStateMetrics: false
+    network: false
+    nodeExporterAlerting: false
+    nodeExporterRecording: false
+    prometheus: false
+    prometheusOperator: false
