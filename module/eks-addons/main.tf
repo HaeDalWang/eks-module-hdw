@@ -1,5 +1,5 @@
 # AWS VPC CNI에 부여할 IAM 정책을 포함하는 ServiceAccount 생성
-# 음.... 왜 넣었지 어차피 노드Role로 될텐데 기억이 없네
+# 권한분리 빡세게 하고 싶으면 노드 Role에서 제외하고 여기서 추가
 # module "vpc_cni_sa" {
 #   source = "../eks-irsa"
 
@@ -97,7 +97,12 @@ resource "kubernetes_storage_class" "ebs_sc" {
   }
   storage_provisioner = "ebs.csi.aws.com"
   volume_binding_mode = "WaitForFirstConsumer"
-
+  ## 파라미터 보면서 수정 
+  ## https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/parameters.md
+  parameters = {
+    type      = "gp3"
+    encrypted = "true"
+  }
   depends_on = [
     aws_eks_addon.ebs_csi_controller
   ]
