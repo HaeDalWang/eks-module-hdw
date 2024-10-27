@@ -10,5 +10,5 @@ output "node_iam_role_name" {
 
 output "queue_name" {
   description = "karpenter가 사용할 SQS 이름"
-  value = aws_sqs_queue.this.id
+  value = aws_sqs_queue.this.name
 }

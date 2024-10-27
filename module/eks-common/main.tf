@@ -141,6 +141,7 @@ resource "helm_release" "external_dns" {
       "serviceAccount.name"   = module.external_dns_sa[0].serviceaccount_name
       "txtOwnerId"    = var.cluster_name
       "domainFilters" = "{${join(",", var.external_dns_domain_filters)}}"
+      "policy" = "sync"
       "extraArgs"     = "{--aws-zone-type=${var.hostedzone_type}}"
     }
     content {

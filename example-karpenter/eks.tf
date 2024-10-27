@@ -2,7 +2,7 @@ module "eks" {
   source = "../module/eks"
 
   cluster_name    = local.cluster_name
-  cluster_version = "1.30"
+  cluster_version = var.eks_cluster_version
 
   # 클러스터를 생성할 VPC
   vpc_id = module.vpc.vpc_id
@@ -53,6 +53,8 @@ resource "aws_eks_addon" "coredns" {
   addon_version               = data.aws_eks_addon_version.coredns.version
   resolve_conflicts_on_update = "OVERWRITE"
 
+  // coredns의 request limit은 얼마를 주어야할까  
+  // https://github.com/coredns/deployment/blob/master/kubernetes/Scaling_CoreDNS.md
   configuration_values = jsonencode({
     computeType = "Fargate"
     resources = {
@@ -126,12 +128,14 @@ resource "helm_release" "karpenter" {
   version             = var.karpenter_version
   namespace           = kubernetes_namespace.karpenter.metadata[0].name
 
+  skip_crds = true
+
   values = [
     <<-EOT
     settings:
       clusterName: ${module.eks.cluster_id}
       clusterEndpoint: ${module.eks.cluster_endpoint}
-      interruptionQueue: 
+      interruptionQueue: ${module.karpenter.queue_name}
       featureGates:
         spotToSpotConsolidation: true
     serviceAccount:
@@ -141,8 +145,7 @@ resource "helm_release" "karpenter" {
   ]
 
   depends_on = [
-    resource.helm_release.karpenter_crd,
-    resource.aws_eks_addon.coredns
+    resource.helm_release.karpenter_crd
   ]
 }
 
@@ -206,7 +209,7 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
             values: ["linux"]
           - key: karpenter.sh/capacity-type
             operator: In
-            values: ["on-demand"]
+            values: ["on-demand","spot"]
           - key: karpenter.k8s.aws/instance-category
             operator: In
             # values: ["c", "m", "r"]
@@ -253,27 +256,34 @@ module "eks-addons" {
 ## ingress nginx
 ## external dns
 ## pod identity agent
-module "eks_common" {
-  source = "../module/eks-common"
+# module "eks_common" {
+#   source = "../module/eks-common"
 
-  cluster_name        = module.eks.cluster_id
-  cluster_version     = module.eks.cluster_version
-  cluster_oidc_issuer = module.eks.cluster_oidc_provider
+#   cluster_name        = module.eks.cluster_id
+#   cluster_version     = module.eks.cluster_version
+#   cluster_oidc_issuer = module.eks.cluster_oidc_provider
 
-  public_subnet_ids  = module.vpc.public_subnet_ids
-  private_subnet_ids = module.vpc.private_subnet_ids
+#   public_subnet_ids  = module.vpc.public_subnet_ids
+#   private_subnet_ids = module.vpc.private_subnet_ids
 
-  enabled_cluster_autoscaler = false
+#   enabled_cluster_autoscaler = false
 
-  enabled_metric_server                      = true
-  metric_server_chart_version                = var.metrics_server_chart_version
-  enabled_aws_load_balancer_controller       = true
-  aws_load_balancer_controller_chart_version = var.aws_load_balancer_controller_chart_version
-  aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
-  enabled_external_dns                       = true
-  external_dns_chart_version                 = var.external_dns_chart_version
-  external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae.name}"]
-  hostedzone_type                            = "public"
+#   enabled_metric_server                      = true
+#   metric_server_chart_version                = var.metrics_server_chart_version
 
-  pod_identity_enabled = true
-}
+#   enabled_aws_load_balancer_controller       = true
+#   aws_load_balancer_controller_chart_version = var.aws_load_balancer_controller_chart_version
+#   aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
+
+#   enabled_external_dns                       = true
+#   external_dns_chart_version                 = var.external_dns_chart_version
+#   external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae.name}"]
+#   hostedzone_type                            = "public"
+
+#   pod_identity_enabled = true
+
+# # │ The "count" value depends on resource attributes that cannot be determined until apply, so Terraform cannot predict how many instances will be created. To work around this, use the -target argument to first apply only the
+# # │ resources that the count depends on.
+#   # count에 대한 리소스 생성 유/무와 개수가 depenson에 대해 결단남으로 생성 할 수 가 없다는 내용  
+#   # depends_on = [ module.eks-addons ]
+# }
