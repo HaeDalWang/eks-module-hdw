@@ -70,20 +70,6 @@ resource "helm_release" "cluster_autoscaler" {
   }
 }
 
-# AWS Load Balancer Controller 설치
-module "aws_load_balancer_controller" {
-  count  = var.enabled_aws_load_balancer_controller ? 1 : 0
-  source = "../aws-load-balancer-controller"
-
-  chart_version       = var.aws_load_balancer_controller_chart_version
-  app_version         = var.aws_load_balancer_controller_app_version
-  cluster_name        = var.cluster_name
-  cluster_oidc_issuer = var.cluster_oidc_issuer
-
-  public_subnets  = var.public_subnet_ids
-  private_subnets = var.private_subnet_ids
-}
-
 # ExternalDNS에서 사용할 IRSA 생성
 module "external_dns_sa" {
   count  = var.enabled_external_dns ? 1 : 0

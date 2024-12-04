@@ -112,7 +112,7 @@ resource "aws_eks_fargate_profile" "this" {
   fargate_profile_name   = each.key
 
   pod_execution_role_arn = aws_iam_role.fargate_profile[0].arn
-  subnet_ids             = var.vpc_subnet_ids
+  subnet_ids             = length(var.fargate_subnet_ids) > 0 ? var.fargate_subnet_ids : var.vpc_subnet_ids
 
   dynamic "selector" {
     for_each = each.value.selectors
@@ -121,4 +121,6 @@ resource "aws_eks_fargate_profile" "this" {
       labels    = lookup(selector.value, "labels", {})
     }
   }
+
+  depends_on = [ aws_eks_cluster.this ]
 }

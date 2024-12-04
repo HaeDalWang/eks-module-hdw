@@ -29,3 +29,8 @@ variable "private_subnets" {
   type        = list(string)
   default     = []
 }
+
+variable "service_account_name" {
+  description = "service accunt name"
+  type = string
+}

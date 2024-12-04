@@ -25,3 +25,8 @@ variable "enabled_coredns" {
   default = true
 }
 
+variable "most_recent" {
+  description = "most_recent 유무 true면 자동으로 안정화 버전 업그레이드 됨"
+  type = bool
+  default = false
+}

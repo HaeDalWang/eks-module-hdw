@@ -55,22 +55,6 @@ variable "cluster_autoscaler_chart_version" {
   default     = ""
 }
 
-variable "enabled_aws_load_balancer_controller" {
-  description = "AWS Load Balancer Controller 활성화 여부"
-  type        = bool
-  default     = false
-}
-
-variable "aws_load_balancer_controller_chart_version" {
-  description = "AWS Load Balancer Controller 헬름 차트 버전 "
-  type        = string
-}
-
-variable "aws_load_balancer_controller_app_version" {
-  description = "AWS Load Balancer Controller 버전 "
-  type        = string
-}
-
 variable "enabled_external_dns" {
   description = "external dns 활성화 여부"
   type        = bool

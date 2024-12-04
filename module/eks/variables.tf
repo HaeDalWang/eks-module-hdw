@@ -18,6 +18,12 @@ variable "vpc_subnet_ids" {
   type        = list(string)
 }
 
+variable "fargate_subnet_ids" {
+  description = "Fargate-profile이 사용될 서브넷 목록 오직 프라이빗 서브넷만 허용됩니다"
+  type        = list(string)
+  default     = [""]
+}
+
 variable "cluster_endpoint_public_access" {
   description = "EKS 클러스터 Public 엔드포인트 활성화 유무"
   type        = bool

@@ -7,12 +7,18 @@ module "eks" {
   # 클러스터를 생성할 VPC
   vpc_id = module.vpc.vpc_id
   ## EKS eni가 생성됨 & fargate 가 배포될 서브넷
-  vpc_subnet_ids = module.vpc.private_subnet_ids
+  # Only Private
+  # vpc_subnet_ids = module.vpc.private_subnet_ids
+  # Prviate + Public
+  vpc_subnet_ids = concat(module.vpc.private_subnet_ids,module.vpc.public_subnet_ids)
 
   ## 클러스터 엔드포인트 Type
   cluster_endpoint_private_access = true
   cluster_endpoint_public_access  = true
 
+  # Fargate 프로필이 사용할 서브넷 오직 프라이빗만 가능하다
+  # 사용하지 않으면 기본값은 vpc_subnet_ids을 따라간다
+  fargate_subnet_ids = module.vpc.private_subnet_ids
   ## Fargate Profile
   fargate_profiles = {
     # Karpenter를 Fargate에 실행
@@ -72,7 +78,7 @@ resource "aws_eks_addon" "coredns" {
   depends_on = [module.eks]
 }
 
-## Karpenter 배포 시 필요한 리소스 생성 모듈
+## Karpenter 배포 시 필요한 리소스 생성 모듈, SQS, Event Bridge 등 
 module "karpenter" {
   source       = "../module/karpenter"
   cluster_name = module.eks.cluster_id
@@ -90,9 +96,6 @@ module "karpenter" {
     AmazonEBSCSIDriverPolicy     = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
     AmazonEFSCSIDriverPolicy     = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
   }
-
-  ## SQS
-  ## Event bridge
 
   depends_on = [module.eks]
 }
@@ -114,7 +117,7 @@ resource "helm_release" "karpenter_crd" {
   chart               = "karpenter-crd"
   version             = var.karpenter_crd_version
   namespace           = kubernetes_namespace.karpenter.metadata[0].name
-
+  
   depends_on = [resource.aws_eks_addon.coredns]
 }
 
@@ -144,6 +147,8 @@ resource "helm_release" "karpenter" {
     EOT
   ]
 
+  timeout = 600
+  
   depends_on = [
     resource.helm_release.karpenter_crd
   ]
@@ -212,11 +217,10 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
             values: ["on-demand","spot"]
           - key: karpenter.k8s.aws/instance-category
             operator: In
-            # values: ["c", "m", "r"]
-            values: ["m"]
+            values: ["t","c", "m", "r"]
           - key: karpenter.k8s.aws/instance-generation
-            operator: In
-            values: ["5"]
+            operator: Gt
+            values: ["2"]
           nodeClassRef:
             apiVersion: karpenter.k8s.aws/v1beta1
             kind: EC2NodeClass
@@ -226,7 +230,7 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
         cpu: 1000
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized ## 조건부를 적는 칸이였음! 노드가 비었거나(비데몬 파드) 사용률이 적은게 조건임 지금은
-        consolidateAfter: 1m ## 조건에 부합하면 몇 시간후에 통합 가능 할꺼냐는 의미 1s드면 바로 삭제함!
+        consolidateAfter: 30s ## 조건에 부합하면 몇 시간후에 통합 가능 할꺼냐는 의미 1s드면 바로 삭제함!
   YAML
 
   depends_on = [
@@ -234,7 +238,7 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
   ]
 }
 
-## vpc-cni, coredns, kube-proxy, ebs-csi driver 설치하는 모듈
+## vpc-cni, coredns, kube-proxy 설치하는 모듈
 module "eks-addons" {
   source = "../module/eks-addons"
 
@@ -252,38 +256,137 @@ module "eks-addons" {
 ## common echo 프로그램 설치
 ## ClusterAutoSclaer
 ## metrics server
-## aws lb controller
 ## ingress nginx
 ## external dns
 ## pod identity agent
-# module "eks_common" {
-#   source = "../module/eks-common"
+module "eks_common" {
+  source = "../module/eks-common"
 
-#   cluster_name        = module.eks.cluster_id
-#   cluster_version     = module.eks.cluster_version
-#   cluster_oidc_issuer = module.eks.cluster_oidc_provider
+  cluster_name        = module.eks.cluster_id
+  cluster_version     = module.eks.cluster_version
+  cluster_oidc_issuer = module.eks.cluster_oidc_provider
 
-#   public_subnet_ids  = module.vpc.public_subnet_ids
-#   private_subnet_ids = module.vpc.private_subnet_ids
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  private_subnet_ids = module.vpc.private_subnet_ids
 
-#   enabled_cluster_autoscaler = false
+  enabled_cluster_autoscaler = false
 
-#   enabled_metric_server                      = true
-#   metric_server_chart_version                = var.metrics_server_chart_version
+  enabled_metric_server       = true
+  metric_server_chart_version = var.metrics_server_chart_version
 
-#   enabled_aws_load_balancer_controller       = true
-#   aws_load_balancer_controller_chart_version = var.aws_load_balancer_controller_chart_version
-#   aws_load_balancer_controller_app_version   = var.aws_load_balancer_controller_app_version
+  enabled_external_dns        = true
+  external_dns_chart_version  = var.external_dns_chart_version
+  external_dns_domain_filters = ["${data.aws_route53_zone.seungdobae.name}"]
+  hostedzone_type             = "public"
 
-#   enabled_external_dns                       = true
-#   external_dns_chart_version                 = var.external_dns_chart_version
-#   external_dns_domain_filters                = ["${data.aws_route53_zone.seungdobae.name}"]
-#   hostedzone_type                            = "public"
+  pod_identity_enabled = true
 
-#   pod_identity_enabled = true
+  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+}
 
-# # │ The "count" value depends on resource attributes that cannot be determined until apply, so Terraform cannot predict how many instances will be created. To work around this, use the -target argument to first apply only the
-# # │ resources that the count depends on.
-#   # count에 대한 리소스 생성 유/무와 개수가 depenson에 대해 결단남으로 생성 할 수 가 없다는 내용  
-#   # depends_on = [ module.eks-addons ]
-# }
+/* 변수로 설치할 AWS Load Balancer Controller의 버전을 받아서 해당 버전에서
+요구되는 IAM 정책 다운로드 */
+data "http" "alb_policy_document" {
+  url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/${var.aws_load_balancer_controller_app_version}/docs/install/iam_policy.json"
+  request_headers = {
+    Accept = "application/json"
+  }
+}
+
+# AWS Load Balancer Controller에 부여할 IAM 정책을 포함하는 ServiceAccount 생성
+module "aws_load_balancer_controller_service_account" {
+  source = "../module/eks-irsa"
+
+  name                = "aws-load-balancer-controller"
+  namespace           = "kube-system"
+  cluster_oidc_issuer = module.eks.cluster_oidc_provider
+  cluster_name        = module.eks.cluster_id
+  policy_document     = tostring(data.http.alb_policy_document.response_body)
+}
+
+# AWS Load Balancer Controller 설치
+module "aws_load_balancer_controller" {
+  source = "../module/aws-load-balancer-controller"
+
+  chart_version       = var.aws_load_balancer_controller_chart_version
+  app_version         = var.aws_load_balancer_controller_app_version
+  cluster_name        = module.eks.cluster_id
+  cluster_oidc_issuer = module.eks.cluster_oidc_provider
+
+  service_account_name = module.aws_load_balancer_controller_service_account.serviceaccount_name
+  public_subnets       = module.vpc.public_subnet_ids
+  private_subnets      = module.vpc.private_subnet_ids
+
+  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+}
+
+# AWS EBS CSI Driver에 부여할 IAM 정책을 포함하는 ServiceAccount 생성
+module "ebs_csi_controller_sa" {
+  source = "../module/eks-irsa"
+
+  name                 = "ebs-csi-controller-sa"
+  cluster_name         = module.eks.cluster_id
+  cluster_oidc_issuer  = module.eks.cluster_oidc_provider
+  namespace            = "kube-system"
+  managed_policy_arns  = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
+  create_iam_role_only = true
+}
+
+# AWS EBS CSI Driver Add-on 활성화
+data "aws_eks_addon_version" "ebs_csi_controller" {
+  addon_name         = "aws-ebs-csi-driver"
+  kubernetes_version = module.eks.cluster_version
+  most_recent        = false
+}
+
+resource "aws_eks_addon" "ebs_csi_controller" {
+  cluster_name                = module.eks.cluster_id
+  addon_name                  = "aws-ebs-csi-driver"
+  addon_version               = data.aws_eks_addon_version.ebs_csi_controller.version
+  service_account_role_arn    = module.ebs_csi_controller_sa.role_arn
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+}
+
+# EBS CSI Driver를 사용하는 StorageClass를 생성하고 기본값으로 지정
+resource "kubernetes_storage_class" "ebs_sc" {
+
+  metadata {
+    name = "ebs-sc"
+    annotations = {
+      "storageclass.kubernetes.io/is-default-class" : "true"
+    }
+  }
+  storage_provisioner = "ebs.csi.aws.com"
+  # https://kubernetes.io/ko/docs/concepts/storage/storage-classes/#볼륨-바인딩-모드
+  volume_binding_mode = "WaitForFirstConsumer"
+  ## 파라미터 보면서 수정 
+  ## https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/parameters.md
+  parameters = {
+    type      = "gp3"
+    encrypted = "true"
+  }
+
+  depends_on = [
+    aws_eks_addon.ebs_csi_controller
+  ]
+}
+
+# EKS에서 기본값으로 설정된 StorageClass(gp2)를 해제
+resource "kubernetes_annotations" "default_storageclass" {
+  api_version = "storage.k8s.io/v1"
+  kind        = "StorageClass"
+  force       = "true"
+
+  metadata {
+    name = "gp2"
+  }
+  annotations = {
+    "storageclass.kubernetes.io/is-default-class" = "false"
+  }
+
+  depends_on = [
+    kubernetes_storage_class.ebs_sc
+  ]
+}

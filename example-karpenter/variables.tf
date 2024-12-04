@@ -13,11 +13,6 @@ variable "karpenter_crd_version" {
   type        = string
 }
 
-variable "gitlab_chart_version" {
-  description = "gitlab chart version"
-  type        = string
-}
-
 variable "aws_load_balancer_controller_chart_version" {
   description = "aws_load_balancer_controller_chart_version"
   type        = string
@@ -45,5 +40,20 @@ variable "ingress_nginx_chart_version" {
 
 variable "argocd_chart_version" {
   description = "argocd_chart_version"
+  type        = string
+}
+
+variable "jenkins_chart_version" {
+  description = "jenkins_chart_version"
+  type        = string
+}
+
+variable "gitlab_chart_version" {
+  description = "gitlab_chart_version"
+  type        = string
+}
+
+variable "agones_chart_version" {
+  description = "agonees_chart_version"
   type        = string
 }
