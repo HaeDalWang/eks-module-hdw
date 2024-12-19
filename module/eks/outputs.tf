@@ -47,3 +47,8 @@ output "cluster_primary_security_group_id" {
   description = "Cluster security group that was created by Amazon EKS for the cluster. Managed node groups use this security group for control-plane-to-data-plane communication. Referred to as 'Cluster security group' in the EKS console"
   value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
 }
+
+output "fargate_iam_role_name" {
+  description = "iam_role_name"
+  value = aws_iam_role.fargate_profile[0].name
+}

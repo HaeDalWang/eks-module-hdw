@@ -3,6 +3,11 @@ output "iam_role_arn" {
   value = aws_iam_role.controller.arn
 }
 
+output "iam_role_name" {
+  description = "Instance Profile에 필요한 Role Name"
+  value = aws_iam_role.controller.name
+}
+
 output "node_iam_role_name" {
   description = "Node에 사용할 Role name"
   value = aws_iam_role.node.name
