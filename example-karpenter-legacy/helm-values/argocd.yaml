@@ -1,0 +1,37 @@
+global:
+  domain: argocd.seungdobae.com
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+server:
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations: 
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: "ops-alb-group"
+    hosts:
+      - argocd.seungdobae.com
+configs:
+  cm:
+    accounts.seungdo: "login,apiKey"
+  rbac:
+    policy.csv: |
+      ## test
+      p, seungdo, applications, get, */*, allow
+      p, seungdo, applications, create, */*, allow
+      p, seungdo, projects, get, */*, allow
+  secret:
+    argocdServerAdminPassword: ${server_admin_password}
+    extra:
+      accounts.seungdo.password: ${password}
+  params:
+    "server.insecure": true
+
+    

@@ -1,0 +1,90 @@
+controller:
+  admin:
+    password: ${password}
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1024Mi"
+    limits:
+      cpu: "3000m"
+      memory: "8192Mi"
+  initContainerResources:
+    requests:
+      cpu: "500m"
+      memory: "1024Mi"
+    limits:
+      cpu: "1000m"
+      memory: "2048Mi"
+
+  ## 플러그인 사이트: https://plugins.jenkins.io/ui/search/
+  installPlugins:
+  - kubernetes:4295.v7fa_01b_309c95
+  - configuration-as-code:1887.v9e47623cb_043
+  additionalPlugins:
+  # - matrix-auth:3.1.6
+  - amazon-ecr:1.136.v914ea_5948634
+  # - gitlab-branch-source:650.va_d1ce6d01959
+  # gitlab-branch-source plugin 최신 버전이 이슈가 있어서 아래 버전 사용하여 gitlab server 정보 수동으로 입력
+  # - gitlab-branch-source:645.v62a_b_6fce8659
+  # - job-dsl:1.83
+  # - pipeline-aws:1.43
+  - docker-workflow:580.vc0c340686b_54
+  - pipeline-utility-steps:2.18.0
+  jenkinsUrlProtocol: https
+  ingress:
+    enabled: true
+    hostName: jenkins.seungdobae.com
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: "internet-facing"
+      alb.ingress.kubernetes.io/target-type: "ip"
+      alb.ingress.kubernetes.io/listen-ports: "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: "ops-alb-group"
+
+serviceAccount:
+  serviceAccount:
+    - ${sa-arn}
+
+# 에이전트 여러개 지정.
+agents:
+  default:
+    enabled: true
+    image: python:3.9
+    runAsUser: 0
+    resources:
+      requests:
+        cpu: 256m
+        memory: 256Mi
+      limits:
+        cpu: 512m
+        memory: 512Mi
+    volumes:
+      - type: HostPath
+        hostPath: /var/run/docker.sock
+        mountPath: /var/run/docker.sock
+
+  # - name: nodejs-agent
+  #   label: nodejs-agent
+  #   containerName: nodejs-container
+  #   image: node:14
+  #   resources:
+  #     requests:
+  #       memory: 512Mi
+  #       cpu: 500m
+  #     limits:
+  #       memory: 1Gi
+  #       cpu: 1
+  
+  # - name: python-agent
+  #   label: python-agent
+  #   containerName: python-container
+  #   image: python:3.9
+  #   resources:
+  #     requests:
+  #       memory: 256Mi
+  #       cpu: 300m
+  #     limits:
+  #       memory: 512Mi
+  #       cpu: 500m

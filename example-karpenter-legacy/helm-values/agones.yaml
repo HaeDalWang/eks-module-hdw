@@ -1,0 +1,16 @@
+## 변수 파라미터 확인
+## https://agones.dev/site/docs/installation/install-agones/helm/
+
+agones:
+  metrics:
+    prometheusEnabled: false
+    prometheusServiceDiscovery: false
+    stackdriverEnabled: false
+    serviceMonitor:
+      enabled: false
+
+gameservers:
+  namespaces:
+  - game
+  minPort: 7000
+  maxPort: 8000

@@ -1,0 +1,24 @@
+apiVersion: "agones.dev/v1"
+kind: Fleet
+metadata:
+  name: supertuxkart
+  namespace: game
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  template:
+    spec:
+      ports:
+      - name: default
+        containerPort: 8080
+      health:
+        initialDelaySeconds: 30
+        periodSeconds: 60
+      template:
+        spec:
+          nodeSelector:
+            karpenter.sh/nodepool: game
+          containers:
+          - name: supertuxkart
+            image: us-docker.pkg.dev/agones-images/examples/supertuxkart-example:0.8
