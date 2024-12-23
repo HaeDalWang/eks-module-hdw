@@ -10,7 +10,7 @@ module "eks" {
   # Only Private
   # vpc_subnet_ids = module.vpc.private_subnet_ids
   # Prviate + Public
-  vpc_subnet_ids = concat(module.vpc.private_subnet_ids,module.vpc.public_subnet_ids)
+  vpc_subnet_ids = concat(module.vpc.private_subnet_ids, module.vpc.public_subnet_ids)
 
   ## 클러스터 엔드포인트 Type
   cluster_endpoint_private_access = true
@@ -117,7 +117,7 @@ resource "helm_release" "karpenter_crd" {
   chart               = "karpenter-crd"
   version             = var.karpenter_crd_version
   namespace           = kubernetes_namespace.karpenter.metadata[0].name
-  
+
   depends_on = [resource.aws_eks_addon.coredns]
 }
 
@@ -148,7 +148,7 @@ resource "helm_release" "karpenter" {
   ]
 
   timeout = 600
-  
+
   depends_on = [
     resource.helm_release.karpenter_crd
   ]

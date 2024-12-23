@@ -106,3 +106,30 @@ resource "aws_lambda_function" "test_lambda" {
   }
 }
 
+# ---------------------
+# 여기서부터 이벤트 브릿지 임
+# ---------------------
+
+# EventBridge Rule 생성
+resource "aws_cloudwatch_event_rule" "lambda_event_rule" {
+  name                = "lambda-1-minute-event-rule"
+  description         = "Trigger Lambda every 1 minute."
+  schedule_expression = "cron(0/1 * * * ? *)" # 1분마다 실행
+}
+
+# EventBridge Rule에 Lambda Target 연결
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.lambda_event_rule.name
+  target_id = "lambda_function_target"
+
+  arn = aws_lambda_function.test_lambda.arn
+}
+
+# Lambda 실행을 위한 권한 추가
+resource "aws_lambda_permission" "eventbridge_permission" {
+  statement_id  = "AllowEventBridgeInvokeLambda"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.test_lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.lambda_event_rule.arn
+}

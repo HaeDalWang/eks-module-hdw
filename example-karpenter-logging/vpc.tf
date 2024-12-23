@@ -15,12 +15,12 @@ module "vpc" {
 
   ## aws-loadbalancer-controller & karpenter 에 필요한 요구사항 Tag 추가
   public_subnet_tags = {
-    "kubernetes.io/role/public" = 1
+    "kubernetes.io/role/public"                   = 1
     "kubernetes.io/cluster/${local.cluster_name}" = "owned"
     "kubernetes.io/role/elb"                      = 1
   }
   private_subnet_tags = {
-    "kubernetes.io/role/private" = 1
+    "kubernetes.io/role/private"                  = 1
     "karpenter.sh/discovery"                      = "${local.cluster_name}"
     "kubernetes.io/cluster/${local.cluster_name}" = "owned"
     "kubernetes.io/role/internal-elb"             = 1
