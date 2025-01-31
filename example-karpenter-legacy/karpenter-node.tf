@@ -51,21 +51,19 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
           - key: karpenter.sh/capacity-type
             operator: In
             values: ["on-demand"]
-          - key: karpenter.k8s.aws/instance-category
+          - key: node.kubernetes.io/instance-type
             operator: In
-            values: ["t","m","c","r"]
-          - key: karpenter.k8s.aws/instance-generation
-            operator: Gt
-            values: ["2"]
-          - key: karpenter.k8s.aws/instance-memory
-            operator: Gt
-            values: ["2048"]
+            values: [
+              "t3.medium", "t3a.medium",
+              "c5.large", "c5a.large", "c6a.large",
+              "c5.xlarge", "c5a.xlarge", "c6a.xlarge"
+            ]
           nodeClassRef:
             apiVersion: karpenter.k8s.aws/v1beta1
             kind: EC2NodeClass
             name: default
       limits:
-        cpu: 1000
+        cpu: 2400
       disruption:
         consolidationPolicy: WhenUnderutilized
         expireAfter: 720h
@@ -74,6 +72,11 @@ resource "kubectl_manifest" "karpenter_default_nodepool" {
   depends_on = [
     kubectl_manifest.karpenter_default_node_class
   ]
+
+  # 만약 재성성이 필요할 경우 먼저 리소스 생성 후 삭제하도록 순서보장
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 ######################## 1.0.0

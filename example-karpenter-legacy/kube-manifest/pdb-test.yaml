@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdb-test-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pdb-test
+  template:
+    metadata:
+      labels:
+        app: pdb-test
+    spec:
+      containers:
+      - name: pdb-test-container
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "1"       # 1코어 요청
+            memory: "2Gi"  # 2Gi 메모리 요청
+          limits:
+            cpu: "1"       # 1코어 리밋
+            memory: "2Gi"  # 2Gi 메모리 리밋
+
+---
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pdb-test-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pdb-test
