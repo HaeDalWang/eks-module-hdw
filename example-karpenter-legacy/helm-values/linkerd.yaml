@@ -1,0 +1,9 @@
+identityTrustAnchorsPEM: |
+  ${ca_cert}
+identity:
+  issuer:
+    tls:
+      crtPEM: |
+        ${issuer_cert}
+      keyPEM: |
+        ${issuer_key}
