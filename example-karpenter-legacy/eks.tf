@@ -166,7 +166,7 @@ module "eks-addons" {
   enabled_coredns = false
 
   depends_on = [
-    kubectl_manifest.karpenter_default_nodepool
+    kubectl_manifest.karpenter_basic_nodepool
   ]
 }
 
@@ -198,7 +198,7 @@ module "eks_common" {
 
   pod_identity_enabled = true
 
-  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+  depends_on = [kubectl_manifest.karpenter_basic_nodepool]
 }
 
 /* 변수로 설치할 AWS Load Balancer Controller의 버전을 받아서 해당 버전에서
@@ -234,7 +234,7 @@ module "aws_load_balancer_controller" {
   public_subnets       = module.vpc.public_subnet_ids
   private_subnets      = module.vpc.private_subnet_ids
 
-  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+  depends_on = [kubectl_manifest.karpenter_basic_nodepool]
 }
 
 # AWS EBS CSI Driver에 부여할 IAM 정책을 포함하는 ServiceAccount 생성
@@ -263,7 +263,7 @@ resource "aws_eks_addon" "ebs_csi_controller" {
   service_account_role_arn    = module.ebs_csi_controller_sa.role_arn
   resolve_conflicts_on_update = "OVERWRITE"
 
-  depends_on = [kubectl_manifest.karpenter_default_nodepool]
+  depends_on = [kubectl_manifest.karpenter_basic_nodepool]
 }
 
 # EBS CSI Driver를 사용하는 StorageClass를 생성하고 기본값으로 지정
